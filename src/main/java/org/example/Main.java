@@ -11,6 +11,6 @@ public class Main {
         // done by Ibrahim's colleague
         System.out.println("enter your age");
         double age = Integer.parseInt(scanner.nextLine());
-
+        System.out.println("You're welcome :"+name+" and you're age is: "+age);
     }
 }
