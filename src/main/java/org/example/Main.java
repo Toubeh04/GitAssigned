@@ -8,6 +8,9 @@ public class Main {
         System.out.println("enter your name:");
         String name = scanner.nextLine();
         System.out.println("Your name is: "+name);
-
+        // done by Ibrahim's colleague
+        System.out.println("enter your age");
+        double age = Double.parseDouble(scanner.nextLine());
+        System.out.println("You're welcome :"+name+" and you're age is: "+age);
     }
 }
