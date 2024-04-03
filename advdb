@@ -1,0 +1,111 @@
+package org.example;
+
+package org.example;
+
+import com.google.gson.JsonObject;
+
+import java.util.List;
+
+public class abr0226887AdvDBExercise {
+
+    public static void main(String[] args) {
+        abr0226887MovieHandler handler = new abr0226887MovieHandler();
+        try {
+            List<JsonObject> movies = handler.fetchMovies();
+            handler.saveMovies(movies);
+            List<JsonObject> adultMovies = handler.fetchAdultMoviesFromDB();
+            System.out.println("Adult tagged movies fetched from the database: ");
+            for (JsonObject movie : adultMovies) {
+                System.out.println(movie);
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching adult tagged movies: " + e.getMessage());
+        }
+    }
+}
+//here's the other class, but i can only upload two files so i put both classes in the same file, sorry for any inconvenience
+import com.google.gson.Gson;
+        import com.google.gson.JsonArray;
+        import com.google.gson.JsonObject;
+        import java.io.IOException;
+        import java.net.URI;
+        import java.net.URISyntaxException;
+        import java.net.http.HttpClient;
+        import java.net.http.HttpRequest;
+        import java.net.http.HttpResponse;
+        import java.sql.*;
+        import java.util.ArrayList;
+        import java.util.List;
+
+public class abr0226887MovieHandler {
+    private static final String API_TOKEN_BEARER = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiN2I0OTdiN2VhZDNiNDZlYjY3YzVkZWEyMDVlM2ZhZSIsInN1YiI6IjY2MDU5YWRjZDQwMGYzMDE2MzhmZjJlMyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.so2VTtAEcCa8Kh6i0Y1WTk28v6-4w6r6KuRQQLb1peY";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/movie_database";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "admin";
+
+    public void saveMovies(List<JsonObject> movies) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+            String query = "INSERT INTO movies (id, adult) VALUES (?, ?)";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            for (JsonObject movie : movies) {
+                int id = movie.get("id").getAsInt();
+                boolean title = movie.get("adult").getAsBoolean();
+
+                statement.setInt(1, id);
+                statement.setBoolean(2, title);
+                statement.addBatch();
+            }
+
+            statement.executeBatch();
+            System.out.println("Movies saved to the database successfully.");
+        } catch (SQLException e) {
+            System.err.println("Error saving movies to the database: " + e.getMessage());
+        }
+    }
+
+    public List<JsonObject> fetchMovies() throws URISyntaxException, IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(new URI("https://api.themoviedb.org/3/movie/changes?page=1"))
+                .header("accept", "application/json")
+                .header("Authorization", "Bearer " + API_TOKEN_BEARER)
+                .GET()
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            JsonArray results = new Gson().fromJson(response.body(), JsonObject.class).getAsJsonArray("results");
+            List<JsonObject> movies = new ArrayList<>();
+            for (int i = 0; i < results.size(); i++) {
+                JsonObject movie = results.get(i).getAsJsonObject();
+                movies.add(movie);
+            }
+            return movies;
+        } else {
+            System.out.println("Request failed with status code: " + response.statusCode());
+            return new ArrayList<>();
+        }
+    }
+    public List<JsonObject> fetchAdultMoviesFromDB() {
+        List<JsonObject> adultMovies = new ArrayList<>();
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+            String query = "SELECT * FROM movies WHERE adult = ?";
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setBoolean(1, true);
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                JsonObject movie = new JsonObject();
+                movie.addProperty("id", resultSet.getInt("id"));
+                movie.addProperty("adult", resultSet.getBoolean("adult"));
+                adultMovies.add(movie);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error fetching adult tagged movies from the database: " + e.getMessage());
+        }
+        return adultMovies;
+    }
+}
